@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Body Outline Terminal</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="terminal-shell">
+      <section class="terminal" aria-label="Camera body outline terminal">
+        <header class="terminal-bar">
+          <div class="terminal-dots" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <p>body-outline.camera</p>
+          <button id="stopButton" type="button" disabled>stop</button>
+        </header>
+
+        <div class="viewport">
+          <video id="video" autoplay playsinline muted></video>
+          <canvas id="outlineCanvas" aria-label="Live body outline overlay"></canvas>
+
+          <div id="startPanel" class="start-panel">
+            <p id="status" role="status">camera terminal offline</p>
+            <button id="startButton" type="button">start camera</button>
+          </div>
+        </div>
+
+        <canvas id="sourceCanvas" aria-hidden="true"></canvas>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
