@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ASCII Face Camera</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <section class="hero">
+        <p class="eyebrow">Live browser camera effect</p>
+        <h1>Turn your face into ASCII art.</h1>
+        <p class="intro">
+          Start the camera and this page will convert your video into live ASCII
+          text, layered right over the camera feed. Everything runs locally in
+          your browser.
+        </p>
+        <div class="actions">
+          <button id="startButton" type="button">Start camera</button>
+          <button id="stopButton" type="button" disabled>Stop camera</button>
+        </div>
+        <p id="status" class="status" role="status">
+          Camera access has not started yet.
+        </p>
+      </section>
+
+      <section class="camera-card" aria-label="ASCII camera preview">
+        <div class="camera-frame">
+          <video id="video" autoplay playsinline muted></video>
+          <pre id="asciiOutput" aria-label="Live ASCII art output"></pre>
+          <div class="scanline" aria-hidden="true"></div>
+        </div>
+        <canvas id="sourceCanvas" aria-hidden="true"></canvas>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
