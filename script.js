@@ -1,4 +1,5 @@
 const video = document.querySelector("#video");
+const cameraFrame = document.querySelector(".camera-frame");
 const canvas = document.querySelector("#sourceCanvas");
 const output = document.querySelector("#asciiOutput");
 const startButton = document.querySelector("#startButton");
@@ -8,9 +9,8 @@ const context = canvas.getContext("2d", { willReadFrequently: true });
 
 const density =
   " .'`^\",:;Il!i><~+_-?][}{1)(|\\/*tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
-const columns = 92;
+const minimumColumns = 44;
 const frameInterval = 1000 / 18;
-const characterAspectRatio = 0.48;
 
 let cameraStream = null;
 let animationFrameId = null;
@@ -91,8 +91,7 @@ function renderAscii(timestamp = 0) {
 
   lastFrameTime = timestamp;
 
-  const videoRatio = video.videoHeight / video.videoWidth || 0.75;
-  const rows = Math.max(28, Math.round(columns * videoRatio * characterAspectRatio));
+  const { columns, rows } = getAsciiGridSize();
 
   canvas.width = columns;
   canvas.height = rows;
@@ -125,6 +124,26 @@ function renderAscii(timestamp = 0) {
   }
 
   output.textContent = ascii;
+}
+
+function getAsciiGridSize() {
+  const styles = getComputedStyle(output);
+  const fontSize = Number.parseFloat(styles.fontSize) || 16;
+  const lineHeight = Number.parseFloat(styles.lineHeight) || fontSize;
+  const letterSpacing = Number.parseFloat(styles.letterSpacing) || 0;
+  const availableWidth = output.clientWidth || cameraFrame.clientWidth;
+  const availableHeight = output.clientHeight || cameraFrame.clientHeight;
+
+  context.font = `${styles.fontWeight} ${fontSize}px ${styles.fontFamily}`;
+  const characterWidth = Math.max(
+    context.measureText("M").width + letterSpacing,
+    fontSize * 0.48,
+  );
+
+  return {
+    columns: Math.max(minimumColumns, Math.floor(availableWidth / characterWidth)),
+    rows: Math.max(24, Math.floor(availableHeight / lineHeight)),
+  };
 }
 
 startButton.addEventListener("click", startCamera);

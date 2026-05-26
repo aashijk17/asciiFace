@@ -1,13 +1,18 @@
 :root {
-  color-scheme: dark;
-  --bg: #060708;
-  --panel: rgba(13, 19, 23, 0.78);
-  --panel-border: rgba(134, 255, 199, 0.24);
-  --text: #ecfff7;
-  --muted: #a4bdb4;
-  --accent: #62ffb3;
-  --accent-strong: #23d18b;
-  --danger: #ff6b8b;
+  color-scheme: light;
+  --bg: #f8b8cf;
+  --bg-soft: #ffd9e8;
+  --panel: rgba(255, 226, 239, 0.58);
+  --panel-border: rgba(255, 255, 255, 0.72);
+  --text: #ffffff;
+  --muted: rgba(255, 255, 255, 0.82);
+  --accent: #ffffff;
+  --accent-soft: #f7c2dc;
+  --accent-strong: #d98bb5;
+  --danger: #fff2f6;
+  --mono:
+    "SFMono-Regular", Consolas, "Liberation Mono", Menlo, ui-monospace,
+    monospace;
 }
 
 * {
@@ -19,13 +24,12 @@ body {
   margin: 0;
   overflow-x: hidden;
   background:
-    radial-gradient(circle at 20% 20%, rgba(35, 209, 139, 0.18), transparent 28rem),
-    radial-gradient(circle at 80% 0%, rgba(42, 130, 255, 0.14), transparent 30rem),
+    radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.5), transparent 24rem),
+    radial-gradient(circle at 78% 8%, rgba(222, 190, 255, 0.4), transparent 28rem),
+    linear-gradient(135deg, var(--bg), var(--bg-soft) 52%, #f3c7ff),
     var(--bg);
   color: var(--text);
-  font-family:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    sans-serif;
+  font-family: var(--mono);
 }
 
 body::before {
@@ -35,10 +39,10 @@ body::before {
   pointer-events: none;
   content: "";
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
-  background-size: 48px 48px;
-  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.75), transparent);
+    linear-gradient(rgba(255, 255, 255, 0.22) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.22) 1px, transparent 1px);
+  background-size: 38px 38px;
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.9), transparent);
 }
 
 .app {
@@ -60,9 +64,10 @@ body::before {
   margin: 0 0 1rem;
   color: var(--accent);
   font-size: 0.78rem;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
+  text-shadow: 0 2px 18px rgba(205, 107, 157, 0.34);
 }
 
 h1 {
@@ -71,6 +76,7 @@ h1 {
   font-size: clamp(3rem, 9vw, 7rem);
   line-height: 0.9;
   letter-spacing: -0.08em;
+  text-shadow: 0 5px 30px rgba(204, 112, 159, 0.34);
 }
 
 .intro {
@@ -79,6 +85,7 @@ h1 {
   color: var(--muted);
   font-size: clamp(1rem, 1.8vw, 1.2rem);
   line-height: 1.7;
+  text-shadow: 0 2px 14px rgba(185, 91, 138, 0.28);
 }
 
 .actions {
@@ -89,15 +96,17 @@ h1 {
 }
 
 button {
-  border: 1px solid rgba(98, 255, 179, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.82);
   border-radius: 999px;
   padding: 0.9rem 1.35rem;
-  background: rgba(98, 255, 179, 0.12);
+  background: rgba(255, 255, 255, 0.18);
   color: var(--text);
   font: inherit;
-  font-weight: 800;
+  font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 0 28px rgba(98, 255, 179, 0.13);
+  box-shadow:
+    0 16px 36px rgba(206, 115, 161, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
   transition:
     transform 160ms ease,
     border-color 160ms ease,
@@ -108,7 +117,7 @@ button:hover:not(:disabled),
 button:focus-visible:not(:disabled) {
   transform: translateY(-2px);
   border-color: var(--accent);
-  background: rgba(98, 255, 179, 0.2);
+  background: rgba(255, 255, 255, 0.32);
 }
 
 button:disabled {
@@ -117,14 +126,15 @@ button:disabled {
 }
 
 #stopButton {
-  border-color: rgba(255, 107, 139, 0.5);
-  background: rgba(255, 107, 139, 0.1);
+  border-color: rgba(255, 255, 255, 0.72);
+  background: rgba(217, 139, 181, 0.2);
 }
 
 .status {
   min-height: 1.5rem;
   margin: 1rem 0 0;
   color: var(--muted);
+  text-shadow: 0 2px 12px rgba(185, 91, 138, 0.28);
 }
 
 .status.error {
@@ -138,8 +148,8 @@ button:disabled {
   border-radius: 2rem;
   background: var(--panel);
   box-shadow:
-    0 34px 80px rgba(0, 0, 0, 0.35),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+    0 34px 80px rgba(193, 103, 149, 0.28),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.42);
   backdrop-filter: blur(18px);
 }
 
@@ -149,9 +159,9 @@ button:disabled {
   z-index: -1;
   border-radius: inherit;
   content: "";
-  background: linear-gradient(135deg, rgba(98, 255, 179, 0.45), transparent 45%);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.78), transparent 45%);
   filter: blur(24px);
-  opacity: 0.45;
+  opacity: 0.55;
 }
 
 .camera-frame {
@@ -159,7 +169,7 @@ button:disabled {
   aspect-ratio: 4 / 3;
   overflow: hidden;
   border-radius: 1.35rem;
-  background: #000;
+  background: #ef9fc2;
 }
 
 video,
@@ -174,28 +184,31 @@ video {
   height: 100%;
   object-fit: cover;
   transform: scaleX(-1);
-  filter: grayscale(1) contrast(1.1) brightness(0.58);
+  filter: grayscale(0.9) contrast(0.96) brightness(0.72) sepia(0.16) hue-rotate(285deg);
 }
 
 #asciiOutput {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
+  width: 100%;
+  height: 100%;
   margin: 0;
-  padding: 1.2rem;
+  padding: 0;
   overflow: hidden;
-  color: var(--accent);
-  background: rgba(0, 0, 0, 0.24);
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-  font-size: clamp(0.28rem, 0.82vw, 0.62rem);
-  font-weight: 800;
-  line-height: 0.72;
-  letter-spacing: 0.02em;
-  text-align: center;
-  text-shadow: 0 0 10px rgba(98, 255, 179, 0.7);
+  color: #ffffff;
+  background: rgba(238, 151, 194, 0.2);
+  font-family: var(--mono);
+  font-size: clamp(0.64rem, 1.25vw, 1.05rem);
+  font-weight: 700;
+  line-height: 0.82;
+  letter-spacing: -0.08em;
+  text-align: left;
+  text-shadow:
+    0 0 3px rgba(255, 255, 255, 0.9),
+    0 0 16px rgba(207, 89, 151, 0.76);
   white-space: pre;
   transform: scaleX(-1);
   mix-blend-mode: screen;
+  user-select: none;
 }
 
 .scanline {
@@ -203,12 +216,12 @@ video {
   background:
     repeating-linear-gradient(
       to bottom,
-      rgba(255, 255, 255, 0.05),
-      rgba(255, 255, 255, 0.05) 1px,
+      rgba(255, 255, 255, 0.09),
+      rgba(255, 255, 255, 0.09) 1px,
       transparent 1px,
-      transparent 5px
+      transparent 6px
     ),
-    radial-gradient(circle at 50% 50%, transparent, rgba(0, 0, 0, 0.24));
+    radial-gradient(circle at 50% 50%, transparent, rgba(220, 115, 171, 0.2));
 }
 
 #sourceCanvas {
