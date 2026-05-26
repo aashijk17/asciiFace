@@ -1,16 +1,19 @@
 const video = document.querySelector("#video");
-const canvas = document.querySelector("#sourceCanvas");
-const output = document.querySelector("#outlineOutput");
+const processingCanvas = document.querySelector("#sourceCanvas");
+const outlineCanvas = document.querySelector("#outlineCanvas");
 const startPanel = document.querySelector("#startPanel");
 const startButton = document.querySelector("#startButton");
 const stopButton = document.querySelector("#stopButton");
 const statusText = document.querySelector("#status");
-const context = canvas.getContext("2d", { willReadFrequently: true });
+const processingContext = processingCanvas.getContext("2d", {
+  willReadFrequently: true,
+});
+const outlineContext = outlineCanvas.getContext("2d");
 
-const minimumColumns = 70;
-const frameInterval = 1000 / 20;
+const frameInterval = 1000 / 24;
 const faceDetectionInterval = 450;
-const edgeThreshold = 66;
+const edgeThreshold = 72;
+const maxSampleWidth = 260;
 
 let cameraStream = null;
 let animationFrameId = null;
@@ -19,6 +22,7 @@ let lastFaceDetectionTime = 0;
 let faceDetector = null;
 let faceBox = null;
 let faceDetectionInProgress = false;
+let currentSourceCrop = null;
 
 function setStatus(message, isError = false) {
   statusText.textContent = message;
@@ -50,7 +54,7 @@ async function startCamera() {
     initializeFaceDetector();
     startPanel.classList.add("is-hidden");
     stopButton.disabled = false;
-    setStatus("tracking face and shoulders");
+    setStatus("drawing white body outline");
     renderOutline();
   } catch (error) {
     cleanupStream();
@@ -68,8 +72,9 @@ function stopCamera() {
 
   cleanupStream();
   video.srcObject = null;
-  output.textContent = "";
+  clearOutline();
   faceBox = null;
+  currentSourceCrop = null;
   startPanel.classList.remove("is-hidden");
   startButton.disabled = false;
   stopButton.disabled = true;
@@ -98,50 +103,101 @@ function renderOutline(timestamp = 0) {
   lastFrameTime = timestamp;
   updateFaceBox(timestamp);
 
-  const { columns, rows } = getAsciiGridSize();
-  const crop = getUpperBodyCrop(columns, rows);
-
-  canvas.width = columns;
-  canvas.height = rows;
-  context.drawImage(
-    video,
-    crop.x,
-    crop.y,
-    crop.width,
-    crop.height,
-    0,
-    0,
-    columns,
-    rows,
+  const displaySize = getDisplaySize();
+  const sampleSize = getSampleSize(displaySize);
+  const sourceCrop = getCoverCrop(
+    video.videoWidth,
+    video.videoHeight,
+    sampleSize.width,
+    sampleSize.height,
   );
 
-  const pixels = context.getImageData(0, 0, columns, rows).data;
-  const gray = toGrayscale(pixels, columns, rows);
-  output.textContent = renderEdges(gray, columns, rows);
+  currentSourceCrop = sourceCrop;
+  processingCanvas.width = sampleSize.width;
+  processingCanvas.height = sampleSize.height;
+  processingContext.drawImage(
+    video,
+    sourceCrop.x,
+    sourceCrop.y,
+    sourceCrop.width,
+    sourceCrop.height,
+    0,
+    0,
+    sampleSize.width,
+    sampleSize.height,
+  );
+
+  const pixels = processingContext.getImageData(
+    0,
+    0,
+    sampleSize.width,
+    sampleSize.height,
+  ).data;
+  const gray = toGrayscale(pixels, sampleSize.width, sampleSize.height);
+
+  resizeOutlineCanvas(displaySize);
+  drawEdges(gray, sampleSize, displaySize);
 }
 
-function getAsciiGridSize() {
-  const styles = getComputedStyle(output);
-  const fontSize = Number.parseFloat(styles.fontSize) || 12;
-  const lineHeight = Number.parseFloat(styles.lineHeight) || fontSize;
-  const letterSpacing = Number.parseFloat(styles.letterSpacing) || 0;
-  const availableWidth = output.clientWidth;
-  const availableHeight = output.clientHeight;
-
-  context.font = `${styles.fontWeight} ${fontSize}px ${styles.fontFamily}`;
-  const characterWidth = Math.max(
-    context.measureText("M").width + letterSpacing,
-    fontSize * 0.48,
-  );
+function getDisplaySize() {
+  const bounds = outlineCanvas.getBoundingClientRect();
 
   return {
-    columns: Math.max(minimumColumns, Math.floor(availableWidth / characterWidth)),
-    rows: Math.max(36, Math.floor(availableHeight / lineHeight)),
+    width: Math.max(1, Math.round(bounds.width)),
+    height: Math.max(1, Math.round(bounds.height)),
   };
 }
 
-function toGrayscale(pixels, columns, rows) {
-  const gray = new Uint8ClampedArray(columns * rows);
+function getSampleSize(displaySize) {
+  const width = Math.min(maxSampleWidth, displaySize.width);
+  const height = Math.max(1, Math.round(width * (displaySize.height / displaySize.width)));
+
+  return { width, height };
+}
+
+function getCoverCrop(sourceWidth, sourceHeight, targetWidth, targetHeight) {
+  const sourceRatio = sourceWidth / sourceHeight;
+  const targetRatio = targetWidth / targetHeight;
+
+  if (sourceRatio > targetRatio) {
+    const width = sourceHeight * targetRatio;
+    return {
+      x: (sourceWidth - width) / 2,
+      y: 0,
+      width,
+      height: sourceHeight,
+    };
+  }
+
+  const height = sourceWidth / targetRatio;
+  return {
+    x: 0,
+    y: (sourceHeight - height) / 2,
+    width: sourceWidth,
+    height,
+  };
+}
+
+function resizeOutlineCanvas(displaySize) {
+  const scale = window.devicePixelRatio || 1;
+  const width = Math.round(displaySize.width * scale);
+  const height = Math.round(displaySize.height * scale);
+
+  if (outlineCanvas.width !== width || outlineCanvas.height !== height) {
+    outlineCanvas.width = width;
+    outlineCanvas.height = height;
+  }
+
+  outlineContext.setTransform(scale, 0, 0, scale, 0, 0);
+}
+
+function clearOutline() {
+  outlineContext.setTransform(1, 0, 0, 1, 0, 0);
+  outlineContext.clearRect(0, 0, outlineCanvas.width, outlineCanvas.height);
+}
+
+function toGrayscale(pixels, width, height) {
+  const gray = new Uint8ClampedArray(width * height);
 
   for (let index = 0; index < gray.length; index += 1) {
     const pixelIndex = index * 4;
@@ -154,62 +210,99 @@ function toGrayscale(pixels, columns, rows) {
   return gray;
 }
 
-function renderEdges(gray, columns, rows) {
-  let frame = "";
+function drawEdges(gray, sampleSize, displaySize) {
+  const scaleX = displaySize.width / sampleSize.width;
+  const scaleY = displaySize.height / sampleSize.height;
+  const focusRegion = getFocusRegion(sampleSize);
 
-  for (let y = 0; y < rows; y += 1) {
-    for (let x = 0; x < columns; x += 1) {
-      if (x === 0 || y === 0 || x === columns - 1 || y === rows - 1) {
-        frame += " ";
+  outlineContext.clearRect(0, 0, displaySize.width, displaySize.height);
+  outlineContext.fillStyle = "#ffffff";
+  outlineContext.shadowColor = "rgba(255, 255, 255, 0.6)";
+  outlineContext.shadowBlur = 4;
+
+  for (let y = 1; y < sampleSize.height - 1; y += 1) {
+    for (let x = 1; x < sampleSize.width - 1; x += 1) {
+      if (!isInsideFocusRegion(x, y, focusRegion)) {
         continue;
       }
 
-      const topLeft = gray[(y - 1) * columns + x - 1];
-      const top = gray[(y - 1) * columns + x];
-      const topRight = gray[(y - 1) * columns + x + 1];
-      const left = gray[y * columns + x - 1];
-      const right = gray[y * columns + x + 1];
-      const bottomLeft = gray[(y + 1) * columns + x - 1];
-      const bottom = gray[(y + 1) * columns + x];
-      const bottomRight = gray[(y + 1) * columns + x + 1];
-
-      const gradientX =
-        -topLeft - 2 * left - bottomLeft + topRight + 2 * right + bottomRight;
-      const gradientY =
-        -topLeft - 2 * top - topRight + bottomLeft + 2 * bottom + bottomRight;
-      const magnitude = Math.hypot(gradientX, gradientY);
+      const magnitude = getEdgeMagnitude(gray, sampleSize.width, x, y);
 
       if (magnitude < edgeThreshold) {
-        frame += " ";
         continue;
       }
 
-      frame += getEdgeCharacter(gradientX, gradientY, magnitude);
+      outlineContext.fillRect(
+        x * scaleX,
+        y * scaleY,
+        Math.max(1.1, scaleX * 0.82),
+        Math.max(1.1, scaleY * 0.82),
+      );
     }
-
-    frame += "\n";
   }
-
-  return frame;
 }
 
-function getEdgeCharacter(gradientX, gradientY, magnitude) {
-  if (magnitude > 185) {
-    return "#";
+function getEdgeMagnitude(gray, width, x, y) {
+  const topLeft = gray[(y - 1) * width + x - 1];
+  const top = gray[(y - 1) * width + x];
+  const topRight = gray[(y - 1) * width + x + 1];
+  const left = gray[y * width + x - 1];
+  const right = gray[y * width + x + 1];
+  const bottomLeft = gray[(y + 1) * width + x - 1];
+  const bottom = gray[(y + 1) * width + x];
+  const bottomRight = gray[(y + 1) * width + x + 1];
+
+  const gradientX =
+    -topLeft - 2 * left - bottomLeft + topRight + 2 * right + bottomRight;
+  const gradientY =
+    -topLeft - 2 * top - topRight + bottomLeft + 2 * bottom + bottomRight;
+
+  return Math.hypot(gradientX, gradientY);
+}
+
+function getFocusRegion(sampleSize) {
+  if (!faceBox || !currentSourceCrop) {
+    return {
+      x: sampleSize.width * 0.18,
+      y: sampleSize.height * 0.02,
+      width: sampleSize.width * 0.64,
+      height: sampleSize.height * 0.9,
+    };
   }
 
-  const angle = Math.atan2(gradientY, gradientX);
-  const normalizedAngle = Math.abs(angle);
+  const face = sourceBoxToSampleBox(faceBox, sampleSize);
+  const width = face.width * 4.4;
+  const height = face.height * 4.8;
+  const centerX = face.x + face.width / 2;
+  const y = face.y - face.height * 0.75;
 
-  if (normalizedAngle < Math.PI / 8 || normalizedAngle > (7 * Math.PI) / 8) {
-    return "|";
-  }
+  return {
+    x: Math.max(0, centerX - width / 2),
+    y: Math.max(0, y),
+    width: Math.min(sampleSize.width, width),
+    height: Math.min(sampleSize.height, height),
+  };
+}
 
-  if (normalizedAngle > (3 * Math.PI) / 8 && normalizedAngle < (5 * Math.PI) / 8) {
-    return "-";
-  }
+function sourceBoxToSampleBox(box, sampleSize) {
+  const scaleX = sampleSize.width / currentSourceCrop.width;
+  const scaleY = sampleSize.height / currentSourceCrop.height;
 
-  return angle > 0 ? "/" : "\\";
+  return {
+    x: (box.x - currentSourceCrop.x) * scaleX,
+    y: (box.y - currentSourceCrop.y) * scaleY,
+    width: box.width * scaleX,
+    height: box.height * scaleY,
+  };
+}
+
+function isInsideFocusRegion(x, y, region) {
+  return (
+    x >= region.x &&
+    x <= region.x + region.width &&
+    y >= region.y &&
+    y <= region.y + region.height
+  );
 }
 
 function initializeFaceDetector() {
@@ -248,60 +341,6 @@ function updateFaceBox(timestamp) {
     .finally(() => {
       faceDetectionInProgress = false;
     });
-}
-
-function getUpperBodyCrop(columns, rows) {
-  const videoWidth = video.videoWidth || 1;
-  const videoHeight = video.videoHeight || 1;
-  const targetAspect = columns / rows;
-
-  if (faceBox) {
-    const centerX = faceBox.x + faceBox.width / 2;
-    const topY = faceBox.y - faceBox.height * 0.7;
-    const cropWidth = Math.max(faceBox.width * 4.4, faceBox.height * 3.1);
-    const cropHeight = cropWidth / targetAspect;
-
-    return clampCrop(
-      centerX - cropWidth / 2,
-      topY,
-      cropWidth,
-      cropHeight,
-      videoWidth,
-      videoHeight,
-    );
-  }
-
-  const fallbackWidth = Math.min(videoWidth, videoHeight * targetAspect) * 0.86;
-  const fallbackHeight = fallbackWidth / targetAspect;
-
-  return clampCrop(
-    (videoWidth - fallbackWidth) / 2,
-    videoHeight * 0.02,
-    fallbackWidth,
-    fallbackHeight,
-    videoWidth,
-    videoHeight,
-  );
-}
-
-function clampCrop(x, y, width, height, videoWidth, videoHeight) {
-  let cropWidth = Math.min(width, videoWidth);
-  let cropHeight = Math.min(height, videoHeight);
-
-  if (cropWidth > videoWidth) {
-    cropWidth = videoWidth;
-  }
-
-  if (cropHeight > videoHeight) {
-    cropHeight = videoHeight;
-  }
-
-  return {
-    x: Math.max(0, Math.min(x, videoWidth - cropWidth)),
-    y: Math.max(0, Math.min(y, videoHeight - cropHeight)),
-    width: cropWidth,
-    height: cropHeight,
-  };
 }
 
 startButton.addEventListener("click", startCamera);

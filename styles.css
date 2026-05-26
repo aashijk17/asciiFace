@@ -109,45 +109,21 @@ button:disabled {
 }
 
 video {
-  display: none;
-}
-
-#outlineOutput {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-  color: var(--text);
-  background: #000000;
-  font-family: var(--mono);
-  font-size: clamp(0.44rem, 1.02vw, 0.78rem);
-  font-weight: 700;
-  line-height: 0.82;
-  letter-spacing: -0.1em;
-  text-align: left;
-  text-shadow: 0 0 7px rgba(255, 255, 255, 0.42);
-  white-space: pre;
+  object-fit: cover;
   transform: scaleX(-1);
-  user-select: none;
 }
 
-#outlineOutput::after {
+#outlineCanvas {
   position: absolute;
   inset: 0;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
-  content: "";
-  background:
-    repeating-linear-gradient(
-      to bottom,
-      rgba(255, 255, 255, 0.045),
-      rgba(255, 255, 255, 0.045) 1px,
-      transparent 1px,
-      transparent 7px
-    ),
-    radial-gradient(circle at 50% 45%, transparent, rgba(0, 0, 0, 0.28));
+  transform: scaleX(-1);
 }
 
 .start-panel {
@@ -201,7 +177,4 @@ video {
     aspect-ratio: auto;
   }
 
-  #outlineOutput {
-    font-size: clamp(0.38rem, 1.7vw, 0.64rem);
-  }
 }

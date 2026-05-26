@@ -1,7 +1,7 @@
 # asciiFace
 
-A browser-based camera terminal that renders a live white ASCII outline of the
-user's upper body, focusing on the face and shoulders.
+A browser-based camera terminal that shows the live camera feed and draws a
+white outline over the user's upper body, focusing on the face and shoulders.
 
 ## Run locally
 
