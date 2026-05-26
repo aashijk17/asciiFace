@@ -1,4 +1,5 @@
 const video = document.querySelector("#video");
+const cameraWindow = document.querySelector(".camera-window");
 const cameraFrame = document.querySelector(".camera-frame");
 const canvas = document.querySelector("#sourceCanvas");
 const output = document.querySelector("#asciiOutput");
@@ -9,12 +10,17 @@ const context = canvas.getContext("2d", { willReadFrequently: true });
 
 const density =
   " .'`^\",:;Il!i><~+_-?][}{1)(|\\/*tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
-const minimumColumns = 44;
+const minimumColumns = 52;
 const frameInterval = 1000 / 18;
+const faceDetectionInterval = 450;
 
 let cameraStream = null;
 let animationFrameId = null;
 let lastFrameTime = 0;
+let lastFaceDetectionTime = 0;
+let faceBox = null;
+let faceDetectionInProgress = false;
+let faceDetector = null;
 
 function setStatus(message, isError = false) {
   statusText.textContent = message;
@@ -42,9 +48,11 @@ async function startCamera() {
 
     video.srcObject = cameraStream;
     await video.play();
+    initializeFaceDetector();
 
     stopButton.disabled = false;
-    setStatus("Camera is live. Move around to redraw the ASCII portrait.");
+    cameraWindow.classList.add("is-live");
+    setStatus("Live ASCII face camera.");
     renderAscii();
   } catch (error) {
     if (cameraStream) {
@@ -74,6 +82,8 @@ function stopCamera() {
 
   video.srcObject = null;
   output.textContent = "";
+  faceBox = null;
+  cameraWindow.classList.remove("is-live");
   startButton.disabled = false;
   stopButton.disabled = true;
   setStatus("Camera stopped.");
@@ -90,12 +100,24 @@ function renderAscii(timestamp = 0) {
   }
 
   lastFrameTime = timestamp;
+  updateFaceBox(timestamp);
 
   const { columns, rows } = getAsciiGridSize();
+  const crop = getFaceCrop();
 
   canvas.width = columns;
   canvas.height = rows;
-  context.drawImage(video, 0, 0, columns, rows);
+  context.drawImage(
+    video,
+    crop.x,
+    crop.y,
+    crop.width,
+    crop.height,
+    0,
+    0,
+    columns,
+    rows,
+  );
 
   const pixels = context.getImageData(0, 0, columns, rows).data;
   let ascii = "";
@@ -114,8 +136,9 @@ function renderAscii(timestamp = 0) {
       }
 
       const brightness = 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+      const contrast = Math.max(0, Math.min(255, (brightness - 35) * 1.35));
       const characterIndex = Math.floor(
-        (brightness / 255) * (density.length - 1),
+        (contrast / 255) * (density.length - 1),
       );
       ascii += density[characterIndex];
     }
@@ -143,6 +166,91 @@ function getAsciiGridSize() {
   return {
     columns: Math.max(minimumColumns, Math.floor(availableWidth / characterWidth)),
     rows: Math.max(24, Math.floor(availableHeight / lineHeight)),
+  };
+}
+
+function initializeFaceDetector() {
+  if (!("FaceDetector" in window)) {
+    faceDetector = null;
+    return;
+  }
+
+  try {
+    faceDetector = new FaceDetector({ fastMode: true, maxDetectedFaces: 1 });
+  } catch (error) {
+    faceDetector = null;
+  }
+}
+
+function updateFaceBox(timestamp) {
+  if (
+    !faceDetector ||
+    faceDetectionInProgress ||
+    timestamp - lastFaceDetectionTime < faceDetectionInterval
+  ) {
+    return;
+  }
+
+  lastFaceDetectionTime = timestamp;
+  faceDetectionInProgress = true;
+
+  faceDetector
+    .detect(video)
+    .then((faces) => {
+      faceBox = faces[0]?.boundingBox ?? faceBox;
+    })
+    .catch(() => {
+      faceDetector = null;
+    })
+    .finally(() => {
+      faceDetectionInProgress = false;
+    });
+}
+
+function getFaceCrop() {
+  const videoWidth = video.videoWidth || 1;
+  const videoHeight = video.videoHeight || 1;
+
+  if (faceBox) {
+    const paddedWidth = faceBox.width * 1.75;
+    const paddedHeight = faceBox.height * 2.05;
+    const size = Math.min(
+      Math.max(paddedWidth, paddedHeight),
+      videoWidth,
+      videoHeight,
+    );
+    const centerX = faceBox.x + faceBox.width / 2;
+    const centerY = faceBox.y + faceBox.height * 0.52;
+
+    return clampCrop(
+      centerX - size / 2,
+      centerY - size / 2,
+      size,
+      videoWidth,
+      videoHeight,
+    );
+  }
+
+  const fallbackSize = Math.min(videoWidth, videoHeight) * 0.82;
+  return clampCrop(
+    (videoWidth - fallbackSize) / 2,
+    videoHeight * 0.08,
+    fallbackSize,
+    videoWidth,
+    videoHeight,
+  );
+}
+
+function clampCrop(x, y, size, videoWidth, videoHeight) {
+  const cropSize = Math.min(size, videoWidth, videoHeight);
+  const maxX = videoWidth - cropSize;
+  const maxY = videoHeight - cropSize;
+
+  return {
+    x: Math.max(0, Math.min(x, maxX)),
+    y: Math.max(0, Math.min(y, maxY)),
+    width: cropSize,
+    height: cropSize,
   };
 }
 
